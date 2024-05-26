@@ -50,7 +50,7 @@ Todo el resto debe estar en blanco.
 function structural_inpainting(
     img_path::String,
     Omega_path::String,
-    max_iters::Int=5000,
+    max_iters::Int=30000,
     dt::Float64=0.1,
     eps::Float64=1e-7,
 )::Array{Float64,2}
