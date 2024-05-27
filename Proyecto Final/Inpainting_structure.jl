@@ -16,7 +16,7 @@ Omega_path = joinpath(image_folder, "Mask_lorem_ipsum.jpg")
 
 function anisotropic_iteration(
     I_0::Array{Float64, 2};
-    K::Float64 = 0.05,
+    K::Float64 = 0.02,
     dt::Float64 = 1/20,
     )::Array{Float64, 2}
 
@@ -145,8 +145,6 @@ M. Bertalmio, G. Sapiro, V. Caselles, and C. Ballester, "Image
 inpainting", in Comput. Graph. (SIGGRAPH 2000), July 2000, pp.
 417-424.
 
-Nota: No se implementó la difusión anisotrópica como fue recomendado por los autores del artículo.
-
 # Arguments
 - `img_path::String`: path a la imagen a la que se le quiere realizar inpainting.
 - `Omega_path::String`: path a la imagen que contiene el Omega, debe ser una imágen con las mismas.
@@ -241,7 +239,7 @@ function structural_inpainting(
     return I_R
 end
 
-@time I_R = structural_inpainting(mickey_path, Omega_path; max_iters=100, dilatacion=1)
+@time I_R = structural_inpainting(mickey_path, Omega_path; max_iters=10000, dilatacion=1)
 
 # Guardamos la imagen restaurada
 I_R = reverse(I_R, dims=1)
