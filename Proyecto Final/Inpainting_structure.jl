@@ -14,13 +14,53 @@ image_folder = "Proyecto Final/Images"
 mickey_path = joinpath(image_folder, "Mickey.jpg")
 Omega_path = joinpath(image_folder, "Mask_lorem_ipsum.jpg")
 
-function anisotropic_iteration(
+
+"""
+anisotropic_iteration(
     I_0::Array{Float64, 2};
-    K::Float64 = 0.02,
+    K::Float64 = 0.09,
     dt::Float64 = 1/20,
     )::Array{Float64, 2}
 
-    if !(0<dt<1/4)
+Función que recibe una imagen en forma de array y aplica una iteración del algoritmo de difusión anisotrópica
+presentado en el siguiente artículo:
+
+P. Perona and J. Malik *Scale-space and edge detection using
+anisotropic diffusion*. IEEE-PAMI 12, pp. 629-639, 1990.
+
+y sugerido en el siguiente artículo:
+
+M. Bertalmio, G. Sapiro, V. Caselles, and C. Ballester, “Image
+inpainting,” in *Comput. Graph. (SIGGRAPH 2000)*, July 2000, pp.
+417–424.
+
+que consiste en una implementación de diferencias finitas para resolver la Ecuación de Difusión Anisotrópica
+
+∂I/∂t = div(g(‖∇I‖) ∇I)
+
+donde I es la función de imágen, ∇ y div son el gradiente y la divergencia respectivamente, y g es una función
+(suficientemente regular) de conductividad que debe ser no-negativa, monótona decreciente que cumple g(0)=1.
+En este caso, usaremos la función g(x) = exp(-x^2/K^2), donde K es la constante de difusión.
+
+# Arguments
+- `I_0::Array{Float64, 2}`: imagen en forma de array.
+- `K::Float64`: constante de difusión: mientras más cercana a 0, más se preservan los bordes (default: 0.1).
+- `dt::Float64`: tamaño de paso (default: 1/20).
+
+# Returns
+- `Array{Float64, 2}`: imagen después de una iteración de difusión anisotrópica.
+
+# Raises
+- `ArgumentError`: si `dt` no está entre 0 y 1/4.
+
+"""
+function anisotropic_iteration(
+    I_0::Array{Float64,2};
+    K::Float64=0.09,
+    dt::Float64=1 / 20,
+)::Array{Float64,2}
+
+    if !(0 < dt < 1 / 4)
         throw(ArgumentError("dt debe estar entre 0 y 1/4"))
     end
 
@@ -38,17 +78,17 @@ function anisotropic_iteration(
 
         # Ecuación 8
         # Diferencias a los vecinos más cercanos
-        DNIn = In[max(i-1, 1), j] - In[i,j]
-        DSIn = In[min(i+1, size(In, 1)), j] - In[i,j]
-        DEIn = In[i, min(j+1, size(In, 2))] - In[i,j]
-        DOIn = In[i, max(j-1, 1)] - In[i,j]
+        DNIn = In[max(i - 1, 1), j] - In[i, j]
+        DSIn = In[min(i + 1, size(In, 1)), j] - In[i, j]
+        DEIn = In[i, min(j + 1, size(In, 2))] - In[i, j]
+        DOIn = In[i, max(j - 1, 1)] - In[i, j]
 
         # Ecuación 10
         # Coeficientes de conducción (aproximados)
-        cNn = g(DNIn)
-        cSn = g(DSIn)
-        cEn = g(DEIn)
-        cOn = g(DOIn)
+        cNn = g(abs(DNIn))
+        cSn = g(abs(DSIn))
+        cEn = g(abs(DEIn))
+        cOn = g(abs(DOIn))
 
         # Ecuación 7
         # Discretisación de 4 vecinos cercanos de Laplaceano
@@ -59,12 +99,43 @@ function anisotropic_iteration(
     return In
 end
 
-function inpaint_iteration(
+"""
+inpaint_iteration(
     In::Array{Float64, 2},
     Omega::BitMatrix,
     dt::Float64,
     eps::Float64,
     )::Array{Float64, 2}
+
+Función que recibe una imagen en forma de array, un mask Omega y aplica una iteración del algoritmo de inpainting
+presentado en el siguiente artículo:
+
+M. Bertalmio, G. Sapiro, V. Caselles, and C. Ballester, “Image
+inpainting,” in *Comput. Graph. (SIGGRAPH 2000)*, July 2000, pp.
+417–424.
+
+que consiste en una implementación de diferencias finitas para resolver la Ecuación de Inpainting
+
+∂I/∂t = ∇(ΔI)⋅∇ᵀI
+
+en Omega, donde I es la función de imágen, ∇ y ∇ᵀ son el gradiente y el transpuesto del gradiente respectivamente,
+y Δ es el Laplaciano.
+
+# Arguments
+- `In::Array{Float64, 2}`: imagen en forma de array.
+- `Omega::BitMatrix`: mask con los pixeles a restaur.
+- `dt::Float64`: tamaño de paso.
+- `eps::Float64`: regularizador para evitar divisiones por cero.
+
+# Returns
+- `Array{Float64, 2}`: imagen después de una iteración de inpainting.
+"""
+function inpaint_iteration(
+    In::Array{Float64,2},
+    Omega::BitMatrix,
+    dt::Float64,
+    eps::Float64,
+)::Array{Float64,2}
     # Inicializamos el siguiente I_n
     In_siguiente = copy(In)
 
@@ -141,9 +212,9 @@ cantidad de pixeles que la imagen original. La imagen del mask, Omega, debe ser 
 exceptuando los puntos a restaurar, que deben ser absolutamente negros. max_iters corresponde a la
 cantidad de repeticiones que se desea aplicar del algoritmo presentado en el siguiente artículo:
 
-M. Bertalmio, G. Sapiro, V. Caselles, and C. Ballester, "Image
-inpainting", in Comput. Graph. (SIGGRAPH 2000), July 2000, pp.
-417-424.
+M. Bertalmio, G. Sapiro, V. Caselles, and C. Ballester, “Image
+inpainting,” in *Comput. Graph. (SIGGRAPH 2000)*, July 2000, pp.
+417–424.
 
 # Arguments
 - `img_path::String`: path a la imagen a la que se le quiere realizar inpainting.
@@ -153,7 +224,7 @@ Todo el resto debe estar en blanco.
 - `A::Int`: cantidad de iteraciones de inpainting (en un cíclo).
 - `B::Int`: cantidad de iteraciones de difusión anisotrópica (en un cíclo).
 - `max_iters::Int`: número de interaciones por realizar al algoritmo de inpainting (default: 5000).
-- `dt::Float64`: velocidad de la eviolución (default: 0.1).
+- `dt::Float64`: velocidad de la eviolución (default: 0.07).
 - `eps::Float64`: regularizador para evitar divisiones por cero (default: 1e-7)
 - `dilatacion::Int`: dilatación del mask (default: 0) 
 
@@ -166,7 +237,7 @@ function structural_inpainting(
     A::Int=15,
     B::Int=2,
     max_iters::Int=5000,
-    dt::Float64=0.1,
+    dt::Float64=0.07,
     eps::Float64=1e-7,
     dilatacion::Int=0,
 )::Array{Float64,2}
@@ -185,16 +256,16 @@ function structural_inpainting(
     Omega_image = Gray.(load(Omega_path))
     # Preservamos los pixeles obscuros
     Omega = reverse(Float64.(Omega_image), dims=1) .< 0.5
-    
+
     if size(Omega) != size(I_0)
         throw(ArgumentError(
             "Omega y img deben tener la misma cantida de pixeles."
-            ))
+        ))
     end
 
     # Aplicamos difusión anisotrópica
     println("Applying anisotropic difussion...")
-    for _ in 1:800
+    for _ in 1:3000
         I_0 = anisotropic_iteration(I_0)
     end
 
@@ -205,7 +276,7 @@ function structural_inpainting(
     ispath(image_folder) || mkdir(image_folder)
     save(save_path, Gray.(I_0))
     I_0 = reverse(I_0, dims=1)
-    
+
     # Establecemos los valores de la imagen que estén en el Omega como 0.5
     I_0[Omega] .= 0.5
 
@@ -239,7 +310,7 @@ function structural_inpainting(
     return I_R
 end
 
-@time I_R = structural_inpainting(mickey_path, Omega_path; max_iters=10000, dilatacion=1)
+@time I_R = structural_inpainting(mickey_path, Omega_path; max_iters=10000, dilatacion=1, A=75, B=1)
 
 # Guardamos la imagen restaurada
 I_R = reverse(I_R, dims=1)
