@@ -22,8 +22,8 @@ anisotropic_iteration(
     dt::Float64 = 1/20,
     )::Array{Float64, 2}
 
-Función que recibe una imagen en forma de array y aplica una iteración del algoritmo de difusión anisotrópica
-presentado en el siguiente artículo:
+Función que recibe una imagen en forma de array y aplica una iteración del algoritmo de difusión
+anisotrópica presentado en el siguiente artículo:
 
 P. Perona and J. Malik *Scale-space and edge detection using
 anisotropic diffusion*. IEEE-PAMI 12, pp. 629-639, 1990.
@@ -34,13 +34,15 @@ M. Bertalmio, G. Sapiro, V. Caselles, and C. Ballester, “Image
 inpainting,” in *Comput. Graph. (SIGGRAPH 2000)*, July 2000, pp.
 417–424.
 
-que consiste en una implementación de diferencias finitas para resolver la Ecuación de Difusión Anisotrópica
+que consiste en una implementación de diferencias finitas para resolver la Ecuación de Difusión
+Anisotrópica
 
 ∂I/∂t = div(g(‖∇I‖) ∇I)
 
-donde I es la función de imágen, ∇ y div son el gradiente y la divergencia respectivamente, y g es una función
-(suficientemente regular) de conductividad que debe ser no-negativa, monótona decreciente que cumple g(0)=1.
-En este caso, usaremos la función g(x) = exp(-x^2/K^2), donde K es la constante de difusión.
+donde I es la función de imágen, ∇ y div son el gradiente y la divergencia respectivamente, y g
+es una función (suficientemente regular) de conductividad que debe ser no-negativa, monótona
+decreciente que cumple g(0)=1. En este caso, usaremos la función g(x) = exp(-x^2/K^2), donde K es
+la constante de difusión.
 
 # Arguments
 - `I_0::Array{Float64, 2}`: imagen en forma de array.
@@ -107,8 +109,8 @@ inpaint_iteration(
     eps::Float64,
     )::Array{Float64, 2}
 
-Función que recibe una imagen en forma de array, un mask Omega y aplica una iteración del algoritmo de inpainting
-presentado en el siguiente artículo:
+Función que recibe una imagen en forma de array, un mask Omega y aplica una iteración del algoritmo
+de inpainting presentado en el siguiente artículo:
 
 M. Bertalmio, G. Sapiro, V. Caselles, and C. Ballester, “Image
 inpainting,” in *Comput. Graph. (SIGGRAPH 2000)*, July 2000, pp.
@@ -118,8 +120,8 @@ que consiste en una implementación de diferencias finitas para resolver la Ecua
 
 ∂I/∂t = ∇(ΔI)⋅∇ᵀI
 
-en Omega, donde I es la función de imágen, ∇ y ∇ᵀ son el gradiente y el transpuesto del gradiente respectivamente,
-y Δ es el Laplaciano.
+en Omega, donde I es la función de imágen, ∇ y ∇ᵀ son el gradiente y el transpuesto del gradiente
+respectivamente, y Δ es el Laplaciano.
 
 # Arguments
 - `In::Array{Float64, 2}`: imagen en forma de array.
@@ -263,7 +265,7 @@ function structural_inpainting(
         ))
     end
 
-    # Aplicamos difusión anisotrópica
+    # Aplicamos difusión anisotrópica (preprocesamos la imágen)
     println("Applying anisotropic difussion...")
     for _ in 1:3000
         I_0 = anisotropic_iteration(I_0)
@@ -289,14 +291,14 @@ function structural_inpainting(
     I_0 = reverse(I_0, dims=1)
 
     # Dilatamos el conjunto de inpainting
-    for _ in dilatacion
+    for _ in 1:dilatacion
         Omega = dilate(Omega)
     end
 
     # Inicializamos las image functions
     In = copy(I_0)
 
-    # Iteramos sobre los tiempos
+    # Iteramos sobre los tiempos, alternamos ente inpainting y anisotrópica (acorde a A y B)
     println("Starting inpainting process...")
     for n in 1:max_iters
         if n % (A + B) < A
@@ -310,7 +312,9 @@ function structural_inpainting(
     return I_R
 end
 
-@time I_R = structural_inpainting(mickey_path, Omega_path; max_iters=10000, dilatacion=1, A=75, B=1)
+@time I_R = structural_inpainting(
+    mickey_path, Omega_path; max_iters=10000, dilatacion=1, A=75, B=1
+    )
 
 # Guardamos la imagen restaurada
 I_R = reverse(I_R, dims=1)
