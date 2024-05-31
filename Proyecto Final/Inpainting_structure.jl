@@ -4,11 +4,13 @@
 # Pkg.add("Images")
 # Pkg.add("FileIO")
 # Pkg.add("Plots")
+# Pkg.add("ProgressMeter")
 
 
 using Images
 using FileIO
 using Plots
+using ProgressMeter
 
 image_folder = "Proyecto Final/Images"
 mickey_path = joinpath(image_folder, "Mickey.jpg")
@@ -47,7 +49,7 @@ la constante de difusión.
 # Arguments
 - `I_0::Array{Float64, 2}`: imagen en forma de array.
 - `K::Float64`: constante de difusión: mientras más cercana a 0, más se preservan los bordes (default: 0.1).
-- `dt::Float64`: tamaño de paso (default: 1/20).
+- `dt::Float64`: tamaño de paso (default: 1/50).
 
 # Returns
 - `Array{Float64, 2}`: imagen después de una iteración de difusión anisotrópica.
@@ -58,8 +60,8 @@ la constante de difusión.
 """
 function anisotropic_iteration(
     I_0::Array{Float64,2};
-    K::Float64=0.09,
-    dt::Float64=1 / 20,
+    K::Float64=0.05,
+    dt::Float64=1/5,
 )::Array{Float64,2}
 
     if !(0 < dt < 1 / 4)
@@ -225,7 +227,8 @@ dimensiones que la imagen original. La zona para realizar el inpainting, Ogema, 
 Todo el resto debe estar en blanco.
 - `A::Int`: cantidad de iteraciones de inpainting (en un cíclo).
 - `B::Int`: cantidad de iteraciones de difusión anisotrópica (en un cíclo).
-- `max_iters::Int`: número de interaciones por realizar al algoritmo de inpainting (default: 5000).
+- `max_iters::Int`: número de interaciones por realizar al algoritmo de inpainting (default: 3000).
+- `anisotropic_iters::Int`: número de iteraciones por realizar al algoritmo de difusión anisotrópica (default: 3000).
 - `dt::Float64`: velocidad de la eviolución (default: 0.07).
 - `eps::Float64`: regularizador para evitar divisiones por cero (default: 1e-7)
 - `dilatacion::Int`: dilatación del mask (default: 0) 
@@ -238,8 +241,9 @@ function structural_inpainting(
     Omega_path::String;
     A::Int=15,
     B::Int=2,
-    max_iters::Int=5000,
-    dt::Float64=0.07,
+    max_iters::Int=3000,
+    anisotropic_iters::Int=3000,
+    dt::Float64=0.1,
     eps::Float64=1e-7,
     dilatacion::Int=0,
 )::Array{Float64,2}
@@ -267,8 +271,10 @@ function structural_inpainting(
 
     # Aplicamos difusión anisotrópica (preprocesamos la imágen)
     println("Applying anisotropic difussion...")
-    for _ in 1:3000
+    anisotropic_progress = Progress(anisotropic_iters, 1, "Anisotropic")
+    for _ in 1:anisotropic_iters
         I_0 = anisotropic_iteration(I_0)
+        next!(anisotropic_progress)
     end
 
     # Guardamos la versión anisotrópica
@@ -300,20 +306,22 @@ function structural_inpainting(
 
     # Iteramos sobre los tiempos, alternamos ente inpainting y anisotrópica (acorde a A y B)
     println("Starting inpainting process...")
+    inpainting_progress = Progress(max_iters, 1, "Inaptinting")
     for n in 1:max_iters
         if n % (A + B) < A
             In = inpaint_iteration(In, Omega, dt, eps)
         else
             In = anisotropic_iteration(In)
         end
-        n % 10 == 0 && println("Iteración $n de $max_iters")
+        
+        next!(inpainting_progress)
     end
     I_R = In
     return I_R
 end
 
 @time I_R = structural_inpainting(
-    mickey_path, Omega_path; max_iters=10000, dilatacion=1, A=75, B=1
+    mickey_path, Omega_path; dilatacion=1
     )
 
 # Guardamos la imagen restaurada
