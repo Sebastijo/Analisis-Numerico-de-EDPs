@@ -6,23 +6,30 @@
 # Pkg.add("Plots")
 # Pkg.add("ProgressMeter")
 
+module inpainting_structure
 
-using Images
+export structural_inpainting
+
+using Base.Filesystem
+# Agregamos la ubicación del entorno de Julia al path
+main_dir = dirname(dirname(dirname(@__FILE__)))
+push!(LOAD_PATH, main_dir)
+
+include("./dilatador.jl")
 using FileIO
-using Plots
 using ProgressMeter
+using LinearAlgebra
+using .dilatador
 
-image_folder = "Proyecto Final/Images"
-mickey_path = joinpath(image_folder, "Mickey.jpg")
-Omega_path = joinpath(image_folder, "Mask_lorem_ipsum.jpg")
-
+img_dir_path = joinpath(main_dir, "Images")
+mask_dir_path = joinpath(img_dir_path, "masks")
 
 """
 anisotropic_iteration(
-    I_0::Array{Float64, 2};
-    K::Float64 = 0.09,
-    dt::Float64 = 1/20,
-    )::Array{Float64, 2}
+	I_0::Array{Float64, 2};
+	K::Float64 = 0.09,
+	dt::Float64 = 1/20,
+	)::Array{Float64, 2}
 
 Función que recibe una imagen en forma de array y aplica una iteración del algoritmo de difusión
 anisotrópica presentado en el siguiente artículo:
@@ -61,7 +68,7 @@ la constante de difusión.
 function anisotropic_iteration(
     I_0::Array{Float64,2};
     K::Float64=0.05,
-    dt::Float64=1/5,
+    dt::Float64=1 / 5,
 )::Array{Float64,2}
 
     if !(0 < dt < 1 / 4)
@@ -105,11 +112,11 @@ end
 
 """
 inpaint_iteration(
-    In::Array{Float64, 2},
-    Omega::BitMatrix,
-    dt::Float64,
-    eps::Float64,
-    )::Array{Float64, 2}
+	In::Array{Float64, 2},
+	Omega::BitMatrix,
+	dt::Float64,
+	eps::Float64,
+	)::Array{Float64, 2}
 
 Función que recibe una imagen en forma de array, un mask Omega y aplica una iteración del algoritmo
 de inpainting presentado en el siguiente artículo:
@@ -145,8 +152,8 @@ function inpaint_iteration(
 
     # Ecuación 8
     function L(I, i, j)
-        Inxx = I[i-1, j] - 2 * I[i, j] + I[i+1, j]
-        Inyy = I[i, j-1] - 2 * I[i, j] + I[i, j+1]
+        Inxx = I[max(i - 1, 1), j] - 2 * I[i, j] + I[min(i + 1, size(I, 1)), j]
+        Inyy = I[i, max(j - 1, 1)] - 2 * I[i, j] + I[i, min(j + 1, size(I, 2))]
         return Inxx + Inyy
     end
 
@@ -154,7 +161,6 @@ function inpaint_iteration(
     for (i, j) in Iterators.product(1:size(In, 1), 1:size(In, 2))
         # Revisamos si el pixel está en el Omega
         if Omega[i, j]
-
             # Ecuación 7
             dLn = [
                 L(In, i + 1, j) - L(In, i - 1, j),
@@ -162,29 +168,28 @@ function inpaint_iteration(
             ]
 
             # Ecuación 9
-            Inx = (In[i+1, j] - In[i-1, j]) / 2
-            Iny = (In[i, j+1] - In[i, j-1]) / 2
+            Inx = (In[min(i + 1, size(In, 1)), j] - In[max(i - 1, 1), j]) / 2
+            Iny = (In[i, min(j + 1, size(In, 2))] - In[i, max(j - 1, 1)]) / 2
             Nn = [-Iny, Inx]
             norm_Nn = sqrt(Nn[1]^2 + Nn[2]^2 + eps)
             Nn_normalized = Nn / norm_Nn
-
             # Ecuación 10
             bn = dot(dLn, Nn_normalized)
 
             # Ecuación 11
-            Inxbm = min(In[i, j] - In[i-1, j], 0)
-            InxbM = max(In[i, j] - In[i-1, j], 0)
-            Inxfm = min(In[i+1, j] - In[i, j], 0)
-            InxfM = max(In[i+1, j] - In[i, j], 0)
-            Inybm = min(In[i, j] - In[i, j-1], 0)
-            InybM = max(In[i, j] - In[i, j-1], 0)
-            Inyfm = min(In[i, j+1] - In[i, j], 0)
-            InyfM = max(In[i, j+1] - In[i, j], 0)
+            Inxbm = min(In[i, j] - In[max(i - 1, 1), j], 0)
+            InxbM = max(In[i, j] - In[max(i - 1, 1), j], 0)
+            Inxfm = min(In[min(i + 1, size(In, 1)), j] - In[i, j], 0)
+            InxfM = max(In[min(i + 1, size(In, 1)), j] - In[i, j], 0)
+            Inybm = min(In[i, j] - In[i, max(j - 1, 1)], 0)
+            InybM = max(In[i, j] - In[i, max(j - 1, 1)], 0)
+            Inyfm = min(In[i, min(j + 1, size(In, 2))] - In[i, j], 0)
+            InyfM = max(In[i, min(j + 1, size(In, 2))] - In[i, j], 0)
             norm_grad_In_positive = sqrt(
-                Inxbm^2 + InxfM^2 + Inybm^2 + InyfM^2
+                Inxbm^2 + InxfM^2 + Inybm^2 + InyfM^2,
             )
             norm_grad_In_negative = sqrt(
-                InxbM^2 + Inxfm^2 + InybM^2 + Inyfm^2
+                InxbM^2 + Inxfm^2 + InybM^2 + Inyfm^2,
             )
             norm_grad_In = (
                 bn > 0 ? norm_grad_In_positive : norm_grad_In_negative
@@ -195,6 +200,7 @@ function inpaint_iteration(
 
             # Ecuación 5
             In_siguiente[i, j] = In[i, j] + dt * Int
+
         end
     end
     In = copy(In_siguiente)
@@ -203,17 +209,17 @@ end
 
 """
 structural_inpainting(
-    img_path::String, 
-    Omega_path::String; 
-    max_iters::Int=5000, 
-    dt::Float64=0.1, 
-    eps::Float64=1e-7
-    dilatacion::Int=0
-    ) :: Array{Float64 ,2}
+	img::Array{Float64, 2}, 
+	Omega::Array{Float64, 2},
+	max_iters::Int=3000, 
+	dt::Float64=0.1, 
+	eps::Float64=1e-7
+	dilatacion::Int=0
+	) :: Array{Float64 ,2}
 
 Función que recibe el path a una imagen y el path a un mask, en la forma de una inágen con la misma
-cantidad de pixeles que la imagen original. La imagen del mask, Omega, debe ser completamente blanca
-exceptuando los puntos a restaurar, que deben ser absolutamente negros. max_iters corresponde a la
+cantidad de pixeles que la imagen original. La imagen del mask, Omega, debe ser completamente negra
+exceptuando los puntos a restaurar, que deben ser absolutamente blancos. max_iters corresponde a la
 cantidad de repeticiones que se desea aplicar del algoritmo presentado en el siguiente artículo:
 
 M. Bertalmio, G. Sapiro, V. Caselles, and C. Ballester, “Image
@@ -221,10 +227,10 @@ inpainting,” in *Comput. Graph. (SIGGRAPH 2000)*, July 2000, pp.
 417–424.
 
 # Arguments
-- `img_path::String`: path a la imagen a la que se le quiere realizar inpainting.
-- `Omega_path::String`: path a la imagen que contiene el Omega, debe ser una imágen con las mismas.
-dimensiones que la imagen original. La zona para realizar el inpainting, Ogema, debe estar en negro.
-Todo el resto debe estar en blanco.
+- `img::Array{Float64, 2}`: La imagen a la que se le quiere realizar inpainting.
+- `Omega::Array{Float64, 2}`: La imagen que contiene el Omega, debe ser una imágen con las mismas
+dimensiones que la imagen original. La zona para realizar el inpainting, Ogema, debe estar en blanco,
+todo el resto debe estar en negro.
 - `A::Int`: cantidad de iteraciones de inpainting (en un cíclo).
 - `B::Int`: cantidad de iteraciones de difusión anisotrópica (en un cíclo).
 - `max_iters::Int`: número de interaciones por realizar al algoritmo de inpainting (default: 3000).
@@ -232,100 +238,74 @@ Todo el resto debe estar en blanco.
 - `dt::Float64`: velocidad de la eviolución (default: 0.07).
 - `eps::Float64`: regularizador para evitar divisiones por cero (default: 1e-7)
 - `dilatacion::Int`: dilatación del mask (default: 0) 
+- `difussion::Float64` La constante de difusión K de la difusión anisotrópica. Mientras más cercana a 0,
+menor difusión (defauls: 0.05)
 
 # Returns
 - `Array{Float64, 2}`: array con la luminocidad de cada pixel.
 """
 function structural_inpainting(
-    img_path::String,
-    Omega_path::String;
+    img::Array{Float64,2},
+    Omega::Array{Float64,2};
     A::Int=15,
     B::Int=2,
     max_iters::Int=3000,
     anisotropic_iters::Int=3000,
     dt::Float64=0.1,
     eps::Float64=1e-7,
-    dilatacion::Int=0,
+    dilatacion::Int=1,
+    difussion::Float64=0.05,
 )::Array{Float64,2}
-
     if max_iters < 1
         throw(ArgumentError("max_iters debe ser mayor que 1"))
     end
-
-    # Cargamos la imágen en blanco y negro
-    img = Gray.(load(img_path))
-
-    # Transformamos la imagen en un array
-    I_0 = reverse(Float64.(img), dims=1)
-
-    # Cargamos el Omega en blanco y negro
-    Omega_image = Gray.(load(Omega_path))
-    # Preservamos los pixeles obscuros
-    Omega = reverse(Float64.(Omega_image), dims=1) .< 0.5
+    I_0 = Float64.(img)
+    Omega = Float64.(Omega) .> 0.5
 
     if size(Omega) != size(I_0)
         throw(ArgumentError(
-            "Omega y img deben tener la misma cantida de pixeles."
+            "Omega y img deben tener la misma cantida de pixeles.",
         ))
     end
 
     # Aplicamos difusión anisotrópica (preprocesamos la imágen)
+    println()
     println("Applying anisotropic difussion...")
     anisotropic_progress = Progress(anisotropic_iters, 1, "Anisotropic")
     for _ in 1:anisotropic_iters
-        I_0 = anisotropic_iteration(I_0)
+        I_0 = anisotropic_iteration(I_0; K=difussion)
         next!(anisotropic_progress)
     end
-
-    # Guardamos la versión anisotrópica
-    img_name, _ = splitext(basename(img_path))
-    I_0 = reverse(I_0, dims=1)
-    save_path = joinpath(image_folder, "Anisotropic_$(img_name).jpg")
-    ispath(image_folder) || mkdir(image_folder)
-    save(save_path, Gray.(I_0))
-    I_0 = reverse(I_0, dims=1)
 
     # Establecemos los valores de la imagen que estén en el Omega como 0.5
     I_0[Omega] .= 0.5
 
-    # Guardamos la foto modificada
-    img_name, _ = splitext(basename(img_path))
-    I_0 = reverse(I_0, dims=1)
-    save_path = joinpath(image_folder, "Damaged_$(img_name).jpg")
-    ispath(image_folder) || mkdir(image_folder)
-    save(save_path, Gray.(I_0))
-    I_0 = reverse(I_0, dims=1)
-
     # Dilatamos el conjunto de inpainting
     for _ in 1:dilatacion
-        Omega = dilate(Omega)
+        Omega = dilate_bitmatrix(Omega)
     end
 
     # Inicializamos las image functions
     In = copy(I_0)
 
     # Iteramos sobre los tiempos, alternamos ente inpainting y anisotrópica (acorde a A y B)
+    println()
     println("Starting inpainting process...")
     inpainting_progress = Progress(max_iters, 1, "Inaptinting")
     for n in 1:max_iters
         if n % (A + B) < A
             In = inpaint_iteration(In, Omega, dt, eps)
         else
-            In = anisotropic_iteration(In)
+            In = anisotropic_iteration(In; K=difussion)
         end
-        
+
         next!(inpainting_progress)
     end
     I_R = In
     return I_R
 end
 
-@time I_R = structural_inpainting(
-    mickey_path, Omega_path; dilatacion=1
-    )
+end
 
-# Guardamos la imagen restaurada
-I_R = reverse(I_R, dims=1)
-save_path = joinpath(image_folder, "Restored_Mickey.png")
-ispath(image_folder) || mkdir(image_folder)
-save(save_path, Gray.(I_R))
+
+
