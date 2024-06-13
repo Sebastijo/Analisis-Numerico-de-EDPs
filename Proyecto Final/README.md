@@ -3,7 +3,7 @@
 ## Nuestro Objetivo
 
 Nuestro objetivo es crear un proyecto que permita realizar inpainting de imagenes con herramientas de Análisis Numérico de Ecuaciones en Derivadas Parciales. El inpainting consiste en reconstruir partes 
-faltantes de imagenes a partir de la información sí disponible de la imagen. Nuestro approach será dividir la imagen dos imagenes, una conteniendo la textura y otra conteniendo la estructura, y luego
+faltantes de imagenes a partir de la información sí disponible de la imagen. Nuestro approach será dividir la imagen en dos imagenes, una conteniendo la textura y otra conteniendo la estructura, y luego
 completar las imagenes por separado. Para completar las imagenes, en el caso de la estructura, se modela como un problema de Dirichlet en la parte faltante de la imagen, para la textura, se aplican otros
 métodos, entre ellos, el método variacional mediante la minimisación de un funcional.
 
