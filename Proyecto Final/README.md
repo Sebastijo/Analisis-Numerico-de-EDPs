@@ -52,9 +52,9 @@ Esto se realizó para cada uno de los 3 canales de RGB con lo que la cantidad de
 ## Comentario Sobre Los Resultados y Próximos Pasos
 
 Los resultados fueron relativamente buenos, con el problema de que la foto se suavizó demasiado. El proceso de inpainting que estamos realizando es local (solo modifica la imagen donde está dañada),
-con lo que el problema es la difusión anisotrópica. Es necesario ajustar los parámetros para evitar este tipo de resultados. Intentaremos modificar los parámetros de manera dinámica como es sugerido en uno de los papers.
+con lo que el problema es la difusión anisotrópica. Es necesario ajustar los parámetros para evitar este tipo de resultados. Intentaremos modificar los parámetros de manera dinámica como es sugerido en [1].
 
-Una vez realizado esto, continuaremos con el inpainting estructural. El objetivo final es descomponer la imagen en estructura y textura para aplicar los procesos por separado.
+Una vez realizado esto, continuaremos con el inpainting de textura. El objetivo final es descomponer la imagen en estructura y textura para aplicar los procesos por separado.
 
 ## Contribuyendo
 
