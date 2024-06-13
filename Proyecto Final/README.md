@@ -78,5 +78,3 @@ Sebastian P. Pincheira - [sebastian.pincheira@ug.uchile.cl](mailto:sebastian.pin
 
 1. P. Perona and J. Malik, *Scale-space and edge detection using anisotropic diffusion*. IEEE-PAMI 12, pp. 629-639, 1990.
 2. M. Bertalmio, G. Sapiro, V. Caselles, and C. Ballester, “Image inpainting,” in *Comput. Graph. (SIGGRAPH 2000)*, July 2000, pp. 417–424.
-
-¡Gracias por tu interés en nuestro proyecto!
