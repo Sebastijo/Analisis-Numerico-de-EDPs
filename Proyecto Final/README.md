@@ -1,5 +1,8 @@
 # Inpainting de Imágenes
 
+![Ecce Homo/Mono](https://github.com/Sebastijo/Analisis-Numerico-de-EDPs/assets/144045099/cbc0347c-de99-46e5-bbfb-18ba5ad2d922)
+
+
 ## Nuestro Objetivo
 
 Nuestro objetivo es crear un proyecto que permita realizar inpainting de imagenes con herramientas de Análisis Numérico de Ecuaciones en Derivadas Parciales. El inpainting consiste en reconstruir partes 
