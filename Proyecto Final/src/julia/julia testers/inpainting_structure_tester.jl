@@ -20,7 +20,7 @@ Omega_image = Gray.(load(Omega_path))
 # Preservamos los pixeles obscuros
 Omega = Float64.(Omega_image)
 
-@time I_R, _ = structural_inpainting(
+@time I_R = structural_inpainting(
 	I_0, Omega; dilatacion = 1
 )
 
