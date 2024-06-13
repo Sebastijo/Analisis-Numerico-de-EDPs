@@ -68,7 +68,7 @@ Si deseas contribuir a este proyecto, por favor sigue las siguientes instruccion
     
 ## Licencia
 
-Este proyecto está bajo la Licencia MIT. Para más detalles, consulta el archivo [LICENSE](LICENSE).
+Este proyecto está bajo la Licencia Apache 2.0. Para más detalles, consulta el archivo [LICENSE](LICENSE).
 
 ## Contacto
 
