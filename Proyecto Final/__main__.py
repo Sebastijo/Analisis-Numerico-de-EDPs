@@ -35,18 +35,22 @@ src_path = main_dir / "src"
 julia_path = src_path / "julia"
 # Carpeta de inpainting estructural de Julia
 inpainting_structure_path = julia_path / "inpainting_structure.jl"
+# Carpeta de inpainting textura de Julia
+inpainting_texture_path = julia_path / "inpainting_texture.jl"
 
 # Importamos modulos propios:
 # Módulo para seleccionar una parte de la imagen
 from src.python.masker import mask_image
 
-# Incluir el archivo de inpainting estructural de Julia
+# Incluir los archivos de inpainting estructural de Julia
 Main.include(str(inpainting_structure_path))
-# Importamos el modulo de inpainting estructural de Julia
+Main.include(str(inpainting_texture_path))
+# Importamos los modulos de inpainting de Julia
 structure = Main.inpainting_structure
+texture = Main.inpainting_texture
 
 
-def inpaint(img_path: Path) -> np.array:
+def inpaint(img_path: Path, method: str = "structure") -> np.array:
     """
     Función que realiza el inpainting de una imagen.
     Entrega un np.array con la imagen restaurada y, además,
@@ -55,10 +59,11 @@ def inpaint(img_path: Path) -> np.array:
 
     Args:
         img_path (Path): Ruta de la imagen a restaurar.
-    
+        method (str, optional): Método de inpainting a realizar. Puede ser "structure" o "texture". Defaults to "structure".
+
     Returns:
         np.array: Imagen restaurada.
-    
+
     """
     # Crear la máscara de la imagen
     img, mask = mask_image(img_path)
@@ -72,21 +77,30 @@ def inpaint(img_path: Path) -> np.array:
     # Inpainting de cada canal
     for color in tqdm(channels):
         channels[color] = channels[color] / 255.0
-        channels[color] = structure.structural_inpainting(
-            channels[color],
-            mask,
-            dt=0.8,
-            max_iters=10000,
-            difussion=0.01,
-        )
+        if method == "structure":
+            channels[color] = structure.structural_inpainting(
+                channels[color],
+                mask,
+                dt=0.8,
+                max_iters=10000,
+                difussion=0.007,
+            )
+        else:
+            channels[color] = texture.texture_inpainting(channels[color], mask)
         channels[color] = channels[color] * 255.0
 
     img = cv2.merge((channels["B"], channels["G"], channels["R"]))
+
+    if method == "structure":
+        restored_dir_path = restored_dir_path / "Structure"
+    else:
+        restored_dir_path = restored_dir_path / "Texture"
+
     restored_path = restored_dir_path / f"{img_path.stem}_restored.jpg"
     cv2.imwrite(restored_path, img)
 
     return img
 
 
-example_img = img_dir_path / "Profile drawing.jpg"
-inpaint(example_img)
+example_img = img_dir_path / "lizard.jpg"
+inpaint(example_img, "texture")

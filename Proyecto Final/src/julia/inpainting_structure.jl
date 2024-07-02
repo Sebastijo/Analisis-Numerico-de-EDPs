@@ -1,11 +1,3 @@
-# Import libraries
-
-# using Pkg
-# Pkg.add("Images")
-# Pkg.add("FileIO")
-# Pkg.add("Plots")
-# Pkg.add("ProgressMeter")
-
 module inpainting_structure
 
 export structural_inpainting
@@ -20,9 +12,6 @@ using FileIO
 using ProgressMeter
 using LinearAlgebra
 using .dilatador
-
-img_dir_path = joinpath(main_dir, "Images")
-mask_dir_path = joinpath(img_dir_path, "masks")
 
 """
 anisotropic_iteration(
@@ -163,8 +152,8 @@ function inpaint_iteration(
         if Omega[i, j]
             # Ecuación 7
             dLn = [
-                L(In, i + 1, j) - L(In, i - 1, j),
-                L(In, i, j + 1) - L(In, i, j - 1),
+                L(In, min(i + 1, size(In, 1)), j) - L(In, max(i - 1, 1), j),
+                L(In, i, min(j + 1, size(In, 2))) - L(In, i, max(j - 1, 1)),
             ]
 
             # Ecuación 9
@@ -224,7 +213,7 @@ cantidad de repeticiones que se desea aplicar del algoritmo presentado en el sig
 
 M. Bertalmio, G. Sapiro, V. Caselles, and C. Ballester, “Image
 inpainting,” in *Comput. Graph. (SIGGRAPH 2000)*, July 2000, pp.
-417–424.
+417-424.
 
 # Arguments
 - `img::Array{Float64, 2}`: La imagen a la que se le quiere realizar inpainting.
@@ -250,7 +239,7 @@ function structural_inpainting(
     A::Int=15,
     B::Int=2,
     max_iters::Int=3000,
-    anisotropic_iters::Int=3000,
+    anisotropic_iters::Int=500,
     dt::Float64=0.1,
     eps::Float64=1e-7,
     dilatacion::Int=1,
@@ -279,6 +268,7 @@ function structural_inpainting(
 
     # Establecemos los valores de la imagen que estén en el Omega como 0.5
     I_0[Omega] .= 0.5
+    I_0[Omega] .= sum(I_0) / (size(I_0, 1) * size(I_0, 2))
 
     # Dilatamos el conjunto de inpainting
     for _ in 1:dilatacion

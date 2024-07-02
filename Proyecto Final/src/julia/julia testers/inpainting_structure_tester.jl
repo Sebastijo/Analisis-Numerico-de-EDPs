@@ -1,10 +1,12 @@
 using ..inpainting_structure
 
 using Images
+using FileIO
 
 main_dir = dirname(dirname(dirname(dirname(@__FILE__))))
 img_dir_path = joinpath(main_dir, "Images")
 restored_dir_path = joinpath(img_dir_path, "restored")
+restored_dir_path = joinpath(restored_dir_path, "Structure")
 mask_dir_path = joinpath(img_dir_path, "masks")
 mickey_path = joinpath(img_dir_path, "Mickey.jpg")
 Omega_path = joinpath(mask_dir_path, "mickey_mask.jpg")
