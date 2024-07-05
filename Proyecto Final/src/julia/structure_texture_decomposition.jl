@@ -10,14 +10,22 @@ push!(LOAD_PATH, main_dir)
 using FileIO
 using ProgressMeter
 
-const epsilon::Float64 = 1e-6
-
 """
 pad_array(arr::Array{Float64, 2})::Array{Float64, 2}
 
 Función que recibe un array y regresa el mismo array pero con 2 columans y dos filas más.
 Estas filas y columnas se generan copiando la fila/columna más cercana a la orilla del array
 original.
+
+Ejemplo:
+
+c
+
+->
+
+c  c  c\\
+c  c  c\\
+c  c  c
 
 # Arguments
 - `arr::Array{Float64, 2}`: array de dos dimensiones.
@@ -49,6 +57,18 @@ function pad_array(arr::Array{Float64,2})::Array{Float64,2}
     return padded_arr
 end
 
+
+function null_pad_array(arr::Array{Float64,2})::Array{Float64,2}
+    
+    padded_arr::Array{Float64,2} = zeros(size(arr) .+ 2)
+
+    # Center
+    padded_arr[2:end-1, 2:end-1] .= arr
+
+    return padded_arr
+end
+
+
 """
 ST-decomposition(
 	f::Array{Float64, 2};
@@ -56,6 +76,7 @@ ST-decomposition(
 	mu::Float64 = 1/10,
     p::Int = 1,
     max_iters::Int = 100,
+    epsilon = 1.5
 	)::Tuple{Array{Float64, 2}, Array{Float64, 2}}
 
 Función que recibe una imagen y regresa la textura y la estructura de la imagen mediante el método
@@ -84,6 +105,7 @@ el caso de ruido).
 - `mu::Float64`: peso asociado a la norma de v (default: 1/10).
 - 'p::Int': parámetro de la norma p a utilizar (más grande, mas preciso pero más lento) (default: 1).
 - 'max_iters::Int': número máximo de iteraciones (default: 100).
+- 'epsilon': parámetro para evitar divisiones por cero (default: 1.5).
 
 # Returns
 - `Tuple{Array{Float64, 2}, Array{Float64, 2}}`: tupla con la estructura y la textura de la imagen.
@@ -94,11 +116,12 @@ el caso de ruido).
 """
 function ST_decomposition(
     f::Array{Float64,2};
-    lamb::Float64=1/10,
-    mu::Float64=1/10,
+    lamb::Float64=0.16,
+    mu::Float64=0.01,
     p::Int=1,
     max_iters::Int=100,
-)::Tuple{Array{Float64,2},Array{Float64,2}}
+    epsilon = 1.475
+)#::Tuple{Array{Float64,2},Array{Float64,2}}
     if lamb < 0 || mu < 0
         throw(ArgumentError("lamb y mu deben ser no-negativos"))
     end
@@ -109,21 +132,21 @@ function ST_decomposition(
     f_pad::Array{Float64,2} = pad_array(f)
     f_x::Array{Float64,2} = zeros(size(f_pad)) # df/dx
     f_y::Array{Float64,2} = zeros(size(f_pad)) # df/dy
-    @. f_x[2:end-1, 2:end-1] = (f_pad[3:end, 2:end-1] - f_pad[1:end-2, 2:end-1]) / 2.0
-    @. f_y[2:end-1, 2:end-1] = (f_pad[2:end-1, 3:end] - f_pad[2:end-1, 1:end-2]) / 2.0
+    @. f_x[2:end-1, 2:end-1] = (f_pad[3:end, 2:end-1] - f_pad[1:end-2, 2:end-1])
+    @. f_y[2:end-1, 2:end-1] = (f_pad[2:end-1, 3:end] - f_pad[2:end-1, 1:end-2])
 
     f_x = f_x[2:end-1, 2:end-1]
     f_y = f_y[2:end-1, 2:end-1]
 
-    gradient_magnitude = similar(f)
+    gradient_magnitude::Array{Float64,2} = similar(f)
     @. gradient_magnitude = sqrt(f_x .^ 2 + f_y .^ 2)
 
-    g1_n = similar(f)
-    g2_n = similar(f)
+    g1_n::Array{Float64,2} = similar(f)
+    g2_n::Array{Float64,2} = similar(f)
 
-    u_n = copy(f)
-    @. g1_n = -1 / (2 * lamb) * f_x / (gradient_magnitude + epsilon)
-    @. g2_n = -1 / (2 * lamb) * f_y / (gradient_magnitude + epsilon)
+    u_n::Array{Float64,2} = copy(f)
+    @. g1_n = (-1 / (2 * lamb)) * (f_x / (gradient_magnitude + epsilon))
+    @. g2_n = (-1 / (2 * lamb)) * (f_y / (gradient_magnitude + epsilon))
 
     c1::Array{Float64,2} = zeros(size(u_n))
     c2::Array{Float64,2} = zeros(size(u_n))
@@ -133,14 +156,15 @@ function ST_decomposition(
     println()
     println("applying structure-texture decomposition...")
     decomposition_progress = Progress(max_iters, 1, "Decomposing")
+
+    u_n_next::Array{Float64,2} = similar(f)
+    g1_n_next::Array{Float64,2} = similar(f)
+    g2_n_next::Array{Float64,2} = similar(f)
+    
     for _ in 1:max_iters
         u_n = pad_array(u_n)
-        g1_n = pad_array(g1_n)
-        g2_n = pad_array(g2_n)
-
-        u_n_next = similar(f)
-        g1_n_next = similar(f)
-        g2_n_next = similar(f)
+        g1_n = null_pad_array(g1_n)
+        g2_n = null_pad_array(g2_n)
 
         @. c1 = 1 / (epsilon + sqrt(
             (u_n[3:end, 2:end-1] - u_n[2:end-1, 2:end-1])^2
@@ -170,14 +194,14 @@ function ST_decomposition(
         )
 
         sqrt_g1_plus_g2_Lp::Float64 = sum((sqrt.(g1_n .^ 2 .+ g2_n .^ 2)) .^ p)^(1 / p)
-        Hg1g2::Array{Float64,2} = sqrt_g1_plus_g2_Lp^(1 - p) .* (sqrt.(g1_n .^ 2 .+ g2_n .^ 2)) .^ (p - 2)
+        Hg1g2::Array{Float64,2} = ((sqrt_g1_plus_g2_Lp + epsilon)^(1 - p)) .* (sqrt.(g1_n .^ 2 .+ g2_n .^ 2) .+ epsilon) .^ (p - 2)
 
-        @. g1_n_next = (2 * lamb / (mu * Hg1g2[2:end-1, 2:end-1] + 4 * lamb)) * (
+        @. g1_n_next = (2 * lamb / (epsilon + mu * Hg1g2[2:end-1, 2:end-1] + 4 * lamb)) * (
             (u_n[3:end, 2:end-1] - u_n[1:end-2, 2:end-1]) / 2.0
             -
             (f_pad[3:end, 2:end-1] - f_pad[1:end-2, 2:end-1]) / 2.0
             +
-            g1_n[3:end, 2:end-1] - g1_n[1:end-2, 2:end-1]
+            g1_n[3:end, 2:end-1] + g1_n[1:end-2, 2:end-1]
             +
             1 / 2 * (
                 2 * g2_n[2:end-1, 2:end-1]
@@ -195,12 +219,13 @@ function ST_decomposition(
                 g2_n[2:end-1, 3:end]
             )
         )
-        @. g2_n_next = (2 * lamb / (mu * Hg1g2[2:end-1, 2:end-1] + 4 * lamb)) * (
+        
+        @. g2_n_next = (2 * lamb / (epsilon + mu * Hg1g2[2:end-1, 2:end-1] + 4 * lamb)) * (
             (u_n[2:end-1, 3:end] - u_n[2:end-1, 1:end-2]) / 2.0
             -
             (f_pad[2:end-1, 3:end] - f_pad[2:end-1, 1:end-2]) / 2.0
             +
-            g2_n[2:end-1, 3:end] - g2_n[2:end-1, 1:end-2]
+            g2_n[2:end-1, 3:end] + g2_n[2:end-1, 1:end-2]
             +
             1 / 2 * (
                 2 * g1_n[2:end-1, 2:end-1]
@@ -226,12 +251,12 @@ function ST_decomposition(
         next!(decomposition_progress)
     end
 
-    g1_pad::Array{Float64,2} = pad_array(g1_n)
-    g2_pad::Array{Float64,2} = pad_array(g2_n)
+    g1_pad::Array{Float64,2} = null_pad_array(g1_n)
+    g2_pad::Array{Float64,2} = null_pad_array(g2_n)
     g1_x::Array{Float64,2} = zeros(size(g1_pad)) # dg1/dx
     g2_y::Array{Float64,2} = zeros(size(g2_pad)) # dg2/dy
-    @. g1_x[2:end-1, 2:end-1] = (g1_pad[3:end, 2:end-1] - g1_pad[1:end-2, 2:end-1]) / 2.0
-    @. g2_y[2:end-1, 2:end-1] = (g2_pad[2:end-1, 3:end] - g2_pad[2:end-1, 1:end-2]) / 2.0
+    @. g1_x[2:end-1, 2:end-1] = (g1_pad[3:end, 2:end-1] - g1_pad[1:end-2, 2:end-1])
+    @. g2_y[2:end-1, 2:end-1] = (g2_pad[2:end-1, 3:end] - g2_pad[2:end-1, 1:end-2])
 
     g1_x = g1_x[2:end-1, 2:end-1]
     g2_y = g2_y[2:end-1, 2:end-1]
@@ -239,7 +264,11 @@ function ST_decomposition(
     u::Array{Float64,2} = u_n
     v::Array{Float64,2} = g1_x + g2_y
 
-    return (u_n, v)
+
+    u_n_x = ((u_n[3:end, 2:end-1] - u_n[1:end-2, 2:end-1]) / 2.0)
+    u_n_y = ((u_n[2:end-1, 3:end] - u_n[2:end-1, 1:end-2]) / 2.0)
+
+    return (u, v, c1, c2, c3, c4, u_n_x, u_n_y)
 end
 
 end

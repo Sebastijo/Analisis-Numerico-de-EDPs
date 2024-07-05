@@ -7,7 +7,7 @@ const main_dir = dirname(dirname(dirname(dirname(@__FILE__))))
 const img_dir_path::String = joinpath(main_dir, "Images")
 const decomposition_dir_path::String = joinpath(img_dir_path, "decompositions")
 
-const img_name::String = "wolf.jpg"
+const img_name::String = "barbara.jpg"
 const dot_index::Int = findlast(==('.'), img_name)
 const name_part::String = img_name[1:dot_index-1]
 const extension_part::String = img_name[dot_index:end]
@@ -17,7 +17,7 @@ const test_img_path::String = joinpath(img_dir_path, img_name)
 # Cargamos la imágen en blanco y negro
 f = Float64.(Gray.(load(test_img_path)))
 
-@time u, v = ST_decomposition(f; max_iters=10, p=1, lamb = 5.0, mu = 0.1)
+@time u, v, c1, c2, c3, c4, u_n_x, u_n_y = ST_decomposition(f; max_iters=100, p=1, lamb = 0.16, mu = 0.01, epsilon = 1.475)
 
 img_path_structure = name_part * "_structure" * extension_part
 save_path_structure = joinpath(decomposition_dir_path, img_path_structure)
@@ -35,8 +35,33 @@ println("Mezcla disponible en $(save_path_mixed)")
 img_path_texture = name_part * "_texture" * extension_part
 save_path_texture = joinpath(decomposition_dir_path, img_path_texture)
 ispath(decomposition_dir_path) || mkdir(decomposition_dir_path)
-save(save_path_texture, Gray.(v.+mean(u)))
+save(save_path_texture, Gray.(v .+ mean(f)))
 println("Textura disponible en $(save_path_texture)")
 
-println(minimum(v .+ mean(u)))
-println(maximum(v .+ mean(u)))
+println("c1:")
+println("máx")
+println(maximum(c1))
+println("min")
+println(minimum(c1))
+
+println()
+
+println("u_n_x")
+println("máx")
+println(maximum(u_n_x))
+println("min")
+println(minimum(u_n_x))
+
+println()
+
+println("u_n_y")
+println("máx")
+println(maximum(u_n_y))
+println("min")
+println(minimum(u_n_y))
+
+println()
+
+println("v + promedio de f")
+println(minimum(v .+ mean(f)))
+println(maximum(v .+ mean(f)))
