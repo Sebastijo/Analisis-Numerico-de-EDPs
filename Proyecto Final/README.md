@@ -64,7 +64,7 @@ $$
 la descomposición final es entonces
 
 $$
-f = u + \underbrace{\partial_x g_1 + \partial_y g_2}_{v}.
+f \approx u + \underbrace{\partial_x g_1 + \partial_y g_2}_{v}.
 $$
 
 #### Resultado de Descomposición Textura-Estructura
