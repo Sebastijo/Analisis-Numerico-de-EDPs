@@ -35,7 +35,7 @@ donde \(\|\bullet\|_*\) es el ínfimo de todas las normas \(L^\infty\) de las fu
 Con el objetivo de resolver este problema variacional, [4] propone la siguiente aproximación:
 
 $$
-\inf_{u, g_1, g_2} \left( G_p(u, g_1, g_2) = \int |\nabla u| + \lambda \int |f - u - \partial_x g_1 - \partial_y g_2| \, dx \, dy + \mu \left[ \int \left( \sqrt{g_1^2 + g_2^2} \right)^p \, dx \, dy \right]^{1/p} \right),
+\inf_{u, g_1, g_2} \left( G_p(u, g_1, g_2) = \int |\nabla u| + \lambda \int |f - u - \partial_x g_1 - \partial_y g_2|  dx dy + \mu \left[ \int \left( \sqrt{g_1^2 + g_2^2} \right)^p \, dx \, dy \right]^{1/p} \right),
 $$
 
 con \(\lambda, \mu > 0\) son parámetros y \(p \to \infty\) (en un sentido formal).
