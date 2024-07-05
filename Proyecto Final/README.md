@@ -47,6 +47,7 @@ $$
 u &= f-\partial_x g_1 - \partial_y g_2 + \frac{1}{2\lambda}\text{div}\left(\frac{\nabla u}{|\nabla u|}\right)\end{align*},\\
 \mu(\|\sqrt{g_1^2 + g_2^2}\|_p)^{1-p}(\sqrt{g_1^2 + g_2^2})^{p-2} &= 2\lambda \left[\partial_x (u-f) + \partial_{xx}^2 g_1 + \partial_{xy}^2 g_2\right],\\
 \mu(\|\sqrt{g_1^2 + g_2^2}\|_p)^{1-p}(\sqrt{g_1^2 + g_2^2})^{p-2} g_2 &= 2\lambda \left[\partial_y (u-f) + \partial_{xy}^2 g_1 + \partial_{yy}^2 g_2\right].
+\end{align*}
 $$
 
 En el caso de dominio finito, se asocian las siguientes condiciones de borde
