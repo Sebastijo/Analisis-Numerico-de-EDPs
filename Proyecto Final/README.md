@@ -163,6 +163,7 @@ Este proyecto está bajo la Licencia Apache 2.0. Para más detalles, consulta el
 ## Contacto
 
 Sebastian P. Pincheira - [sebastian.pincheira@ug.uchile.cl](mailto:sebastian.pincheira@ug.uchile.cl)
+
 Francisco Maldonado
 
 ## Referencias
