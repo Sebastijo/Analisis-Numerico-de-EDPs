@@ -26,7 +26,7 @@ Se toma como punto de partida el modelo propuesto por [3]: Asumiendo una imagen 
 donde \(u\) capture la estructura y \(v\) la textura (y el ruido) con \(u \in \text{BV}(\mathbb{R}^2)\). Para esto se resuelve
 
 $$
-\inf_u \Big\{ E(u) = \int |\nabla u| + \lambda \|v\|_*,\; f = u + v \Big\}
+\inf_u \{ E(u) = \int |\nabla u| + \lambda \|v\|_*,\; f = u + v \}
 $$
 
 donde \(\|\bullet\|_*\) es el ínfimo de todas las normas \(L^\infty\) de las funciones \(|g|\) donde \(g = g_1 \times g_2\) y \(|g(x,y)| = \sqrt{g_1(x,y)^2 + g_2(x,y)^2}\) que cumplen \(v = \partial_x g_1 + \partial_y g_2\) con \(g_1, g_2 \in L^\infty(\mathbb{R}^2)\).
