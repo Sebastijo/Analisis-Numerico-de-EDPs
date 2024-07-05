@@ -55,8 +55,8 @@ En el caso de dominio finito, se asocian las siguientes condiciones de borde
 $$
 \begin{align*}
 \frac{\nabla u}{|\nabla u|} &= 0,\\
-(f-u-\partial_x g_1 - \partial_y g_2)n_x = 0,\\
-(f - u - \partial_x g_1 - \partial_y g_2)n_y = 0.
+(f-u-\partial_x g_1 - \partial_y g_2)n_x &= 0,\\
+(f - u - \partial_x g_1 - \partial_y g_2)n_y &= 0.
 \end{align*}
 $$
 
