@@ -44,8 +44,8 @@ Minimizando de manera formal la energía recién mencionada, se obtienen las sig
 
 $$
 \begin{align*} u &= f - \partial_x g_1 - \partial_y g_2 + \frac{1}{2\lambda} \text{div}\left( \frac{\nabla u}{|\nabla u|} \right),\\
-\mu (|\sqrt{g_1^2 + g_2^2}|p)^{1-p} (\sqrt{g_1^2 + g_2^2})^{p-2} g_1 &= 2\lambda \left( \partial_x (u - f) + \partial{xx} g_1 + \partial_{xy} g_2 \right),\\
-\mu (|\sqrt{g_1^2 + g_2^2}|p)^{1-p} (\sqrt{g_1^2 + g_2^2})^{p-2} g_2 &= 2\lambda \left( \partial_y (u - f) + \partial{xy} g_1 + \partial_{yy} g_2 \right). \end{align*}
+\mu (|\sqrt{g_1^2 + g_2^2}|_p)^{1-p} (\sqrt{g_1^2 + g_2^2})^{p-2} g_1 &= 2\lambda \left( \partial_x (u - f) + \partial{xx} g_1 + \partial_{xy} g_2 \right),\\
+\mu (|\sqrt{g_1^2 + g_2^2}|_p)^{1-p} (\sqrt{g_1^2 + g_2^2})^{p-2} g_2 &= 2\lambda \left( \partial_y (u - f) + \partial{xy} g_1 + \partial_{yy} g_2 \right). \end{align*}
 $$
 
 
