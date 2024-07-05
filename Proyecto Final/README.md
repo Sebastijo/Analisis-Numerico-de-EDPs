@@ -22,8 +22,8 @@ Una imagen RGB sería entonces un objeto de la forma $(u_R, u_G, u_B)$ donde cad
 
 ### Descomposición Textura-Estructura
 
-Se toma como punto de partida el modelo propuesto por [3]: Asumiendo una imagen \(f \in L^2(\mathbb{R}^2)\) (se refleja una imagen infinitas veces para teselar el plano), se quiere descomponer tal que \(f = u + v\),
-donde \(u\) capture la estructura y \(v\) la textura (y el ruido) con \(u \in \text{BV}(\mathbb{R}^2)\). Para esto se resuelve
+Se toma como punto de partida el modelo propuesto por [3]: Asumiendo una imagen $f \in L^2(\mathbb{R}^2)$ (se refleja una imagen infinitas veces para teselar el plano), se quiere descomponer tal que $f = u + v$,
+donde $u$ capture la estructura y $v$ la textura (y el ruido) con $u \in \text{BV}(\mathbb{R}^2)$. Para esto se resuelve
 
 $$
 \inf_u \left( E(u) = \int |\nabla u| + \lambda \|v\|_*, f = u + v \right)
