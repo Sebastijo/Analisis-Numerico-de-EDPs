@@ -73,7 +73,7 @@ Como es estandard en procesamiento de imágenes, utilizamos la imagen Barbara co
 
 ![barbara_original](https://github.com/Sebastijo/Analisis-Numerico-de-EDPs/assets/144045099/f25d2374-51c1-4f63-aa0e-c5ce28416ee5)
 
-La textura de la imagen obtenida es ($v$):
+La textura de la imagen obtenida es ($v + \text{mean}(f)$, se translada para poder visualizar):
 
 ![Barbara_texture](https://github.com/Sebastijo/Analisis-Numerico-de-EDPs/assets/144045099/749d7051-ba83-4bdf-a869-2aeb866567eb)
 
