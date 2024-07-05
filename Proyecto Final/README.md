@@ -17,10 +17,10 @@ en textura-estructura. Además se implementó una interfaz de usuario que permit
 
 ## Cómo Funciona
 
-### Descomposición Textura-Estructura
-
 En adelante, una función de imagen será una función que toma valores en un rectángulo de $\mathbb{R}^2$ y entrega valores en $[0, 1]$. En una imagen en blanco y negro, esto se puede interpretar como una asignación de luz donde 0 es negro y 1 es blanco.
 Una imagen RGB sería entonces un objeto de la forma $(u_R, u_G, u_B)$ donde cada $u_i$ es una función de imagen. Todos los procesos se realizan en cada uno de estos canales RGB de manera independiente.
+
+### Descomposición Textura-Estructura
 
 Se toma como punto de partida el modelo propuesto por [3]: Asumiendo una imagen \(f \in L^2(\mathbb{R}^2)\) (se refleja una imagen infinitas veces para teselar el plano), se quiere descomponer tal que \(f = u + v\),
 donde \(u\) capture la estructura y \(v\) la textura (y el ruido) con \(u \in \text{BV}(\mathbb{R}^2)\). Para esto se resuelve
