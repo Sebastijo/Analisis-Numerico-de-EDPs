@@ -9,6 +9,8 @@ push!(LOAD_PATH, main_dir)
 
 using FileIO
 using ProgressMeter
+using LinearAlgebra
+using Statistics
 
 """
 pad_array(arr::Array{Float64, 2})::Array{Float64, 2}
@@ -120,7 +122,8 @@ function ST_decomposition(
     mu::Float64=0.01,
     p::Int=1,
     max_iters::Int=100,
-    epsilon = 1.475
+    epsilon::Float64 = 1e-1,
+    ajuste::Float64 = 1.5
 )#::Tuple{Array{Float64,2},Array{Float64,2}}
     if lamb < 0 || mu < 0
         throw(ArgumentError("lamb y mu deben ser no-negativos"))
@@ -132,8 +135,8 @@ function ST_decomposition(
     f_pad::Array{Float64,2} = pad_array(f)
     f_x::Array{Float64,2} = zeros(size(f_pad)) # df/dx
     f_y::Array{Float64,2} = zeros(size(f_pad)) # df/dy
-    @. f_x[2:end-1, 2:end-1] = (f_pad[3:end, 2:end-1] - f_pad[1:end-2, 2:end-1])
-    @. f_y[2:end-1, 2:end-1] = (f_pad[2:end-1, 3:end] - f_pad[2:end-1, 1:end-2])
+    @. f_x[2:end-1, 2:end-1] = (f_pad[3:end, 2:end-1] - f_pad[1:end-2, 2:end-1]) / 2.0
+    @. f_y[2:end-1, 2:end-1] = (f_pad[2:end-1, 3:end] - f_pad[2:end-1, 1:end-2]) / 2.0
 
     f_x = f_x[2:end-1, 2:end-1]
     f_y = f_y[2:end-1, 2:end-1]
@@ -193,10 +196,24 @@ function ST_decomposition(
             1 / (2 * lamb) * (c1 * u_n[3:end, 2:end-1] + c2 * u_n[1:end-2, 2:end-1] + c3 * u_n[2:end-1, 3:end] + c4 * u_n[2:end-1, 1:end-2])
         )
 
-        sqrt_g1_plus_g2_Lp::Float64 = sum((sqrt.(g1_n .^ 2 .+ g2_n .^ 2)) .^ p)^(1 / p)
-        Hg1g2::Array{Float64,2} = ((sqrt_g1_plus_g2_Lp + epsilon)^(1 - p)) .* (sqrt.(g1_n .^ 2 .+ g2_n .^ 2) .+ epsilon) .^ (p - 2)
+        # Compute the matrix sqrt(g1^2 + g2^2)
+        magnitude = sqrt.(g1_n.^2 .+ g2_n.^2)
+        
+        # Compute the p-norm of the magnitude matrix
+        p_norm = norm(magnitude, p)
+        
+        # Calculate (p_norm)^(1-p)
+        factor = (p_norm + epsilon)^(1-p)
+        
+        # Compute (magnitude)^(p-2)
+        magnitude_power = (magnitude .+ epsilon).^(p-2)
+        
+        # Combine the results
+        Hg1g2 = factor * magnitude_power
 
-        @. g1_n_next = (2 * lamb / (epsilon + mu * Hg1g2[2:end-1, 2:end-1] + 4 * lamb)) * (
+        println(mean(Hg1g2))
+
+        @. g1_n_next = (2 * lamb / (ajuste + mu * Hg1g2[2:end-1, 2:end-1] + 4 * lamb)) * (
             (u_n[3:end, 2:end-1] - u_n[1:end-2, 2:end-1]) / 2.0
             -
             (f_pad[3:end, 2:end-1] - f_pad[1:end-2, 2:end-1]) / 2.0
@@ -220,7 +237,7 @@ function ST_decomposition(
             )
         )
         
-        @. g2_n_next = (2 * lamb / (epsilon + mu * Hg1g2[2:end-1, 2:end-1] + 4 * lamb)) * (
+        @. g2_n_next = (2 * lamb / (ajuste + mu * Hg1g2[2:end-1, 2:end-1] + 4 * lamb)) * (
             (u_n[2:end-1, 3:end] - u_n[2:end-1, 1:end-2]) / 2.0
             -
             (f_pad[2:end-1, 3:end] - f_pad[2:end-1, 1:end-2]) / 2.0
@@ -251,19 +268,18 @@ function ST_decomposition(
         next!(decomposition_progress)
     end
 
-    g1_pad::Array{Float64,2} = null_pad_array(g1_n)
-    g2_pad::Array{Float64,2} = null_pad_array(g2_n)
+    g1_pad::Array{Float64,2} = pad_array(g1_n)
+    g2_pad::Array{Float64,2} = pad_array(g2_n)
     g1_x::Array{Float64,2} = zeros(size(g1_pad)) # dg1/dx
     g2_y::Array{Float64,2} = zeros(size(g2_pad)) # dg2/dy
-    @. g1_x[2:end-1, 2:end-1] = (g1_pad[3:end, 2:end-1] - g1_pad[1:end-2, 2:end-1])
-    @. g2_y[2:end-1, 2:end-1] = (g2_pad[2:end-1, 3:end] - g2_pad[2:end-1, 1:end-2])
+    @. g1_x[2:end-1, 2:end-1] = (g1_pad[3:end, 2:end-1] - g1_pad[1:end-2, 2:end-1]) / 2.0
+    @. g2_y[2:end-1, 2:end-1] = (g2_pad[2:end-1, 3:end] - g2_pad[2:end-1, 1:end-2]) / 2.0
 
     g1_x = g1_x[2:end-1, 2:end-1]
     g2_y = g2_y[2:end-1, 2:end-1]
 
     u::Array{Float64,2} = u_n
     v::Array{Float64,2} = g1_x + g2_y
-
 
     u_n_x = ((u_n[3:end, 2:end-1] - u_n[1:end-2, 2:end-1]) / 2.0)
     u_n_y = ((u_n[2:end-1, 3:end] - u_n[2:end-1, 1:end-2]) / 2.0)

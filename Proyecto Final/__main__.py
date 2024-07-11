@@ -41,6 +41,7 @@ inpainting_texture_path = julia_path / "inpainting_texture.jl"
 # Importamos modulos propios:
 # Módulo para seleccionar una parte de la imagen
 from src.python.masker import mask_image
+from src.python.Structure_Texture_decomposition import ST_decomposition
 
 # Incluir los archivos de inpainting estructural de Julia
 Main.include(str(inpainting_structure_path))
@@ -50,7 +51,7 @@ structure = Main.inpainting_structure
 texture = Main.inpainting_texture
 
 
-def inpaint(img_path: Path, method: str = "structure") -> np.array:
+def inpaint(img_path: Path) -> np.array:
     """
     Función que realiza el inpainting de una imagen.
     Entrega un np.array con la imagen restaurada y, además,
@@ -59,7 +60,6 @@ def inpaint(img_path: Path, method: str = "structure") -> np.array:
 
     Args:
         img_path (Path): Ruta de la imagen a restaurar.
-        method (str, optional): Método de inpainting a realizar. Puede ser "structure" o "texture". Defaults to "structure".
 
     Returns:
         np.array: Imagen restaurada.
@@ -68,39 +68,71 @@ def inpaint(img_path: Path, method: str = "structure") -> np.array:
     # Crear la máscara de la imagen
     img, mask = mask_image(img_path)
 
+    K = 0.08
+    difussion = K
+    dt_ani = 1 / 45
+
+    struct, text = ST_decomposition(img, K=K, dt=dt_ani, max_iters=500)
+
+    text = text + 0.5
+
     # Transformamos el mask en formato blanco y negro
     mask = cv2.cvtColor(mask, cv2.COLOR_BGR2GRAY) / 255.0
 
     # Separamos la imágen en sus canales RGB
-    b_channel, g_channel, r_channel = cv2.split(img)
-    channels = {"R": r_channel, "G": g_channel, "B": b_channel}
+    b_channel_struct, g_channel_struct, r_channel_struct = cv2.split(struct)
+    channels_struct = {
+        "R": r_channel_struct,
+        "G": g_channel_struct,
+        "B": b_channel_struct,
+    }
     # Inpainting de cada canal
-    for color in tqdm(channels):
-        channels[color] = channels[color] / 255.0
-        if method == "structure":
-            channels[color] = structure.structural_inpainting(
-                channels[color],
-                mask,
-                dt=0.8,
-                max_iters=10000,
-                difussion=0.007,
-            )
-        else:
-            channels[color] = texture.texture_inpainting(channels[color], mask)
-        channels[color] = channels[color] * 255.0
+    for color in channels_struct:
+        print()
+        print(f"Realizando inpainting de estructura para el color {color}")
+        channels_struct[color] = structure.structural_inpainting(
+            channels_struct[color],
+            mask,
+            max_iters=500,
+            anisotropic_iters=1,
+            dt=0.56,
+            dilatacion=1,
+            difussion=K,
+            dt_ani=dt_ani,
+        )
 
-    img = cv2.merge((channels["B"], channels["G"], channels["R"]))
+    struct = cv2.merge(
+        (channels_struct["B"], channels_struct["G"], channels_struct["R"])
+    )
 
-    if method == "structure":
-        restored_dir_path = restored_dir_path / "Structure"
-    else:
-        restored_dir_path = restored_dir_path / "Texture"
+    # Separamos la imágen en sus canales RGB
+    b_channel_text, g_channel_text, r_channel_text = cv2.split(text)
+    channels_text = {"R": r_channel_text, "G": g_channel_text, "B": b_channel_text}
+    #for color in channels_text:
+    #    print()
+    #    print(f"Realizando inpainting the textura para el color {color}")
+    #    channels_text[color] = texture.texture_inpainting(
+    #        channels_text[color], mask, block_size0=8
+    #    )
 
-    restored_path = restored_dir_path / f"{img_path.stem}_restored.jpg"
-    cv2.imwrite(restored_path, img)
+    text = cv2.merge((channels_text["B"], channels_text["G"], channels_text["R"]))
+
+    cv2.imshow("Structure", struct)
+    cv2.imshow("Texture", text)
+    text = text - 0.5
+    cv2.imshow("Restaurada", struct + text)
+
+    esc = False
+    while not esc:
+        if cv2.waitKey(1) == 27:
+            cv2.destroyAllWindows()
+            esc = True
+
+    # restored_path = restored_dir_path / f"{img_path.stem}_restored.jpg"
+    # cv2.imwrite(restored_path, img)
 
     return img
 
 
-example_img = img_dir_path / "lizard.jpg"
-inpaint(example_img, "texture")
+example_img = img_dir_path / "barbara.jpg"
+inpaint(example_img)

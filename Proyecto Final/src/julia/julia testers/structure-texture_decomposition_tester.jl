@@ -17,7 +17,7 @@ const test_img_path::String = joinpath(img_dir_path, img_name)
 # Cargamos la imágen en blanco y negro
 f = Float64.(Gray.(load(test_img_path)))
 
-@time u, v, c1, c2, c3, c4, u_n_x, u_n_y = ST_decomposition(f; max_iters=100, p=1, lamb = 0.16, mu = 0.01, epsilon = 1.475)
+@time u, v, c1, c2, c3, c4, u_n_x, u_n_y = ST_decomposition(f; max_iters=100, p=1, lamb = 0.2, mu = 0.01, epsilon = 1e-1, ajuste = 0.0)
 
 img_path_structure = name_part * "_structure" * extension_part
 save_path_structure = joinpath(decomposition_dir_path, img_path_structure)
@@ -37,28 +37,6 @@ save_path_texture = joinpath(decomposition_dir_path, img_path_texture)
 ispath(decomposition_dir_path) || mkdir(decomposition_dir_path)
 save(save_path_texture, Gray.(v .+ mean(f)))
 println("Textura disponible en $(save_path_texture)")
-
-println("c1:")
-println("máx")
-println(maximum(c1))
-println("min")
-println(minimum(c1))
-
-println()
-
-println("u_n_x")
-println("máx")
-println(maximum(u_n_x))
-println("min")
-println(minimum(u_n_x))
-
-println()
-
-println("u_n_y")
-println("máx")
-println(maximum(u_n_y))
-println("min")
-println(minimum(u_n_y))
 
 println()
 

@@ -137,8 +137,7 @@ def mask_image(img_path: Path) -> tuple[np.ndarray, np.ndarray]:
 if __name__ == "__main__":
     img_path = img_dir_path / "Profile drawing.jpg"
     img, mask = mask_image(img_path)
-    print("Imágen original:")
-    print(img)
-    print()
-    print("Mask:")
-    print(mask)
+    cv2.imshow("Original", img)
+    cv2.imshow("Mask", mask)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()

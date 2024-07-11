@@ -1,6 +1,6 @@
 module inpainting_structure
 
-export structural_inpainting
+export structural_inpainting, anisotropic_iteration
 
 using Base.Filesystem
 # Agregamos la ubicación del entorno de Julia al path
@@ -204,6 +204,8 @@ structural_inpainting(
 	dt::Float64=0.1, 
 	eps::Float64=1e-7
 	dilatacion::Int=0
+    difussion::Float64=0.05
+    dt_ani::Float64=1 / 20
 	) :: Array{Float64 ,2}
 
 Función que recibe el path a una imagen y el path a un mask, en la forma de una inágen con la misma
@@ -229,6 +231,7 @@ todo el resto debe estar en negro.
 - `dilatacion::Int`: dilatación del mask (default: 0) 
 - `difussion::Float64` La constante de difusión K de la difusión anisotrópica. Mientras más cercana a 0,
 menor difusión (defauls: 0.05)
+- `dt_adni::Float64` El paso en el tiempo de la difusión anisotrópica.
 
 # Returns
 - `Array{Float64, 2}`: array con la luminocidad de cada pixel.
@@ -241,9 +244,10 @@ function structural_inpainting(
     max_iters::Int=3000,
     anisotropic_iters::Int=500,
     dt::Float64=0.1,
-    eps::Float64=1e-7,
+    eps::Float64=1e-8,
     dilatacion::Int=1,
     difussion::Float64=0.05,
+    dt_ani::Float64=1 / 20,
 )::Array{Float64,2}
     if max_iters < 1
         throw(ArgumentError("max_iters debe ser mayor que 1"))
@@ -258,12 +262,14 @@ function structural_inpainting(
     end
 
     # Aplicamos difusión anisotrópica (preprocesamos la imágen)
-    println()
-    println("Applying anisotropic difussion...")
-    anisotropic_progress = Progress(anisotropic_iters, 1, "Anisotropic")
-    for _ in 1:anisotropic_iters
-        I_0 = anisotropic_iteration(I_0; K=difussion)
-        next!(anisotropic_progress)
+    if anisotropic_iters > 0
+        println()
+        println("Applying anisotropic difussion...")
+        anisotropic_progress = Progress(anisotropic_iters, 1, "Anisotropic")
+        for _ in 1:anisotropic_iters
+            I_0 = anisotropic_iteration(I_0; K=difussion, dt=dt_ani)
+            next!(anisotropic_progress)
+        end
     end
 
     # Establecemos los valores de la imagen que estén en el Omega como 0.5
@@ -286,7 +292,7 @@ function structural_inpainting(
         if n % (A + B) < A
             In = inpaint_iteration(In, Omega, dt, eps)
         else
-            In = anisotropic_iteration(In; K=difussion)
+            In = anisotropic_iteration(In; K=difussion, dt=dt_ani)
         end
 
         next!(inpainting_progress)

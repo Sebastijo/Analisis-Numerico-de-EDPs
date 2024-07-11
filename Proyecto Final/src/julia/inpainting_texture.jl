@@ -84,7 +84,11 @@ function texture_inpainting(
         return i, j
     end
 
+    println()
+    println("Applying texture inpainting...")
+    texture_progress = Progress(n_rows * n_cols + 1, 1, "Texture")
     for (i_block, j_block) in Iterators.product(1:n_rows, 1:n_cols)
+        next!(texture_progress)
         if (i_block, j_block) == (1, 1) # El primero no se puede reparar
             continue
         end
