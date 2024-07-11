@@ -1,4 +1,4 @@
-module inpainting_texture
+module inpainting_texture_old
 
 export texture_inpainting
 
@@ -38,31 +38,25 @@ la zona de solape dependiente a este desplazamiento en caso de ocurrir.
 - `Array{Float64, 2}`: imagen restaurada.
 """
 function texture_inpainting(
-    IR::Array{Float64,2},
-    IG::Array{Float64,2},
-    IB::Array{Float64,2},
+    I0::Array{Float64,2},
     Omega0::Array{Float64,2};
-    block_size0::Int=Int64(floor(size(IR, 1) / 6)),
-):: Tuple{Array{Float64,2}, Array{Float64,2}, Array{Float64,2}}
-
-    candidates = Dict{Float64,Tuple{Int32,Int32}}()
-    global I = [IR, IG, IB]
-    global I_orig = [copy(IR), copy(IG),copy(IB)] # Es para reparar los bloques a la derecha y abajo del hoyo
+    block_size0::Int=Int64(floor(size(I0, 1) / 6)),
+)::Array{Float64,2}
+    global I = I0
+    global I_orig = copy(I) #Es para reparar los bloques a la derecha y abajo del hoyo
     global Omega = Omega0 .> 0.5
-    if size(Omega) != size(I[1])
+    if size(Omega) != size(I)
         throw(ArgumentError(
-            "Omega e img deben tener la misma cantidad de pixeles."
+            "Omega y img deben tener la misma cantidad de pixeles."
         ))
     end
 
     # Establecemos los valores de la imagen que estén en el Omega como 0.5
-    for canal in I
-        canal[Omega] .= 0
-    end
+    I[Omega] .= 0
 
 
     if block_size0 == 0 #En el paper se indica que un buen tamaño es 1/6 de la imagen
-        block_size0 = div(minimum(size(I[1])), 6)
+        block_size0 = div(minimum(size(I)), 6)
     end
 
     global block_size = block_size0
@@ -70,7 +64,7 @@ function texture_inpainting(
 
 
     upper, left = false, false
-    I_height, I_width = size(I[1])
+    I_height, I_width = size(I)
     # Cuantos bloques caben en ancho y largo, permitiendo que el último sobresalga
     n_rows = div(I_height, block_size - overlap_size) + (%(I_height, block_size) == 0 ? 0 : 1)
     n_cols = div(I_width, block_size - overlap_size) + (%(I_width, block_size) == 0 ? 0 : 1)
@@ -90,7 +84,11 @@ function texture_inpainting(
         return i, j
     end
 
+    println()
+    println("Applying texture inpainting...")
+    texture_progress = Progress(n_rows * n_cols + 1, 1, "Texture")
     for (i_block, j_block) in Iterators.product(1:n_rows, 1:n_cols)
+        next!(texture_progress)
         if (i_block, j_block) == (1, 1) # El primero no se puede reparar
             continue
         end
@@ -117,18 +115,7 @@ function texture_inpainting(
 
         end
     end
-    # si el primer bloque está dañado, invertimos la imagen y corremos el
-    # algoritmo nuevamente considerando sólo el primer bloque de Omega
-    if any(Omega[1:block_size, 1:block_size])
-        #new_Omega es como la máscara original pero sólo en el primer bloque
-        new_Omega = zero(Omega0)
-        new_Omega[1:block_size, 1:block_size] = Omega0[1:block_size, 1:block_size]
-        new_Omega = reverse(new_Omega, dims=1)
-        new_I = [copy(I[1]), copy(I[2]),  copy(I[3])]
-        new_IR, new_IG, new_IB = Tuple(reverse(channel, dims=1) for channel in  new_I)
-        return Tuple(reverse(channel, dims=1) for channel in texture_inpainting(new_IR, new_IG, new_IB, new_Omega; block_size0))
-    end
-    return I[1], I[2], I[3]
+    return I
 end
 
 """
@@ -137,16 +124,14 @@ Le realiza el corte de error mínimo al bloque por arriba, sin cambiar el bloque
 function cut_up(i, j)
     #se toma el bloque del original, sino la solapa de block es igual a la de upper_block
     #pues se sobrescribió al arreglar el upper_block
-    block = [channel[i:i+block_size-1, j:j+block_size-1] for channel in I_orig]
+    block = I_orig[i:i+block_size-1, j:j+block_size-1]
     upper_i = i - (block_size - overlap_size)
-    upper_block = [channel[upper_i:upper_i+block_size-1, j:j+block_size-1] for channel in I]
+    upper_block = I[upper_i:upper_i+block_size-1, j:j+block_size-1]
     cut_mask = minimum_cut_mask(block, 0, upper_block)
-    cutted_block = [channel .* cut_mask for channel in block]
+    cutted_block = block .* cut_mask
     #reemplazamos el bloque, con el nuevo bloque cortado arriba
-    for k in 1:3
-        I[k][i:i+block_size-1, j:j+block_size-1] = I[k][i:i+block_size-1, j:j+block_size-1] .* (.~cut_mask)
-        I[k][i:i+block_size-1, j:j+block_size-1] = I[k][i:i+block_size-1, j:j+block_size-1] .+ cutted_block[k]
-    end
+    I[i:i+block_size-1, j:j+block_size-1] = I[i:i+block_size-1, j:j+block_size-1] .* (.~cut_mask)
+    I[i:i+block_size-1, j:j+block_size-1] = I[i:i+block_size-1, j:j+block_size-1] .+ cutted_block
 end
 """
 Le realiza el corte de error mínimo al bloque por la izq, sin cambiar el bloque.
@@ -154,17 +139,15 @@ Le realiza el corte de error mínimo al bloque por la izq, sin cambiar el bloque
 function cut_left(i, j)
     #se toma el bloque del original, sino la solapa de block es igual a la de left_block
     #pues se sobrescribió al arreglar el left_block
-    block = [channel[i:i+block_size-1, j:j+block_size-1] for channel in I_orig]
+    block = I_orig[i:i+block_size-1, j:j+block_size-1]
     left_j = j - (block_size - overlap_size)
     #I[i: i + block_size - 1, left_j: left_j + block_size - 1] .=1
-    left_block = [channel[i:i+block_size-1, left_j:left_j+block_size-1] for channel in I]
+    left_block = I[i:i+block_size-1, left_j:left_j+block_size-1]
     cut_mask = minimum_cut_mask(block, left_block, 0)
-    cutted_block = [channel .* cut_mask for channel in block]
+    cutted_block = block .* cut_mask
     #reemplazamos el bloque, con el nuevo bloque cortado arriba
-    for k in 1:3
-        I[k][i:i+block_size-1, j:j+block_size-1] = I[k][i:i+block_size-1, j:j+block_size-1] .* (.~cut_mask)
-        I[k][i:i+block_size-1, j:j+block_size-1] = I[k][i:i+block_size-1, j:j+block_size-1] .+ cutted_block[k]
-    end
+    I[i:i+block_size-1, j:j+block_size-1] = I[i:i+block_size-1, j:j+block_size-1] .* (.~cut_mask)
+    I[i:i+block_size-1, j:j+block_size-1] = I[i:i+block_size-1, j:j+block_size-1] .+ cutted_block
 end
 
 """
@@ -179,45 +162,75 @@ bloque.
 """
 function synthesize_block(i, j)
     #inpainting_block = I[i: i + block_size - 1, j: j + block_size - 1] 
-    left, upper = false, false
-    left_block, upper_block = 0, 0
-    IR, IG, IB = I
 
     #left
     if j != 1
         left = true
         left_j = j - (block_size - overlap_size)
-        left_block = [
-            I[1][i:i+block_size-1, left_j:left_j+block_size-1],
-            I[2][i:i+block_size-1, left_j:left_j+block_size-1],
-            I[3][i:i+block_size-1, left_j:left_j+block_size-1]
-            ]
+        left_block = I[i:i+block_size-1, left_j:left_j+block_size-1]
     end
     #upper
     if i != 1
         upper = true
         upper_i = i - (block_size - overlap_size)
-        upper_block = [
-            I[1][upper_i:upper_i+block_size-1, j:j+block_size-1],
-            I[2][upper_i:upper_i+block_size-1, j:j+block_size-1],
-            I[3][upper_i:upper_i+block_size-1, j:j+block_size-1]
-            ]
+        upper_block = I[upper_i:upper_i+block_size-1, j:j+block_size-1]
     end
     new_block = search_block(
-        left_block,
-        upper_block,
+        left ? left_block : 0,
+        upper ? upper_block : 0,
     )
     cut_mask = minimum_cut_mask(new_block, left_block, upper_block)
-    cutted_new_block = [
-        new_block[1] .* cut_mask,
-        new_block[2] .* cut_mask,
-        new_block[3] .* cut_mask,
-        ]
+    cutted_new_block = new_block .* cut_mask
     #reemplazamos el bloque a inpaintear dentro del corte, con el nuevo bloque cortado
-    for canal in 1:3
-        I[canal][i:i+block_size-1, j:j+block_size-1] = I[canal][i:i+block_size-1, j:j+block_size-1] .* (.~cut_mask)
-        I[canal][i:i+block_size-1, j:j+block_size-1] = I[canal][i:i+block_size-1, j:j+block_size-1] .+ cutted_new_block[canal]
+    I[i:i+block_size-1, j:j+block_size-1] = I[i:i+block_size-1, j:j+block_size-1] .* (.~cut_mask)
+    I[i:i+block_size-1, j:j+block_size-1] = I[i:i+block_size-1, j:j+block_size-1] .+ cutted_new_block
+end
+
+
+
+"""
+search_block recorre todos los bloques que no interceptan Omega, y calcula el error respecto a los solapes
+del bloque a inpaintear llamando a  get_error.
+Guarda los errores con las posiciones de los bloques, selecciona todos los que cumplan el umbral y de estos
+elige uno aleatoriamente.
+"""
+function search_block(left_block, upper_block)
+    I_height, I_width = size(I)
+
+    # Cuantos bloques caben en ancho y largo, permitiendo que el último sobresalga
+    n_rows = div(I_height, block_size - overlap_size) + (%(I_height, block_size) == 0 ? 0 : 1)
+    n_cols = div(I_width, block_size - overlap_size) + (%(I_width, block_size) == 0 ? 0 : 1)
+
+    candidates = Dict{Float64,Tuple{Int32,Int32}}()
+    for (i_block, j_block) in Iterators.product(1:n_rows, 1:n_cols)
+        #coordenadas a partir de la posición del bloque
+        i = (i_block - 1) * (block_size - overlap_size) + 1
+        j = (j_block - 1) * (block_size - overlap_size) + 1
+
+        # Si sobresale
+        if i + block_size > I_height
+            i = I_height - block_size + 1
+        end
+        if j + block_size > I_width
+            j = I_width - block_size + 1
+        end
+
+        #Si no contiene pixeles de la máscara lo evaluamos con get_error y agregamos a candidatos
+        if !any(Omega[i:i+block_size-1, j:j+block_size-1])
+            candidates[get_error(i, j, left_block, upper_block)] = (i, j)
+        end
     end
+
+    # Escogemos los candidatos con error dentro de un 0.1 veces el error del mejor candidato
+    # (recomendación del paper)
+    min_error = minimum(keys(candidates))
+    margin = 1.1 * min_error
+    best_candidates = [candidates[key] for key in filter(n -> n <= margin, keys(candidates))]
+    i, j = rand(best_candidates)
+    new_block = I[i:i+block_size-1, j:j+block_size-1]
+
+    return new_block
+
 end
 
 """
@@ -225,18 +238,12 @@ minimum_cut calcula el corte de frontera de menor error, y entrega una máscara
 correspondiente
 """
 function minimum_cut_mask(new_block, left_block, upper_block)
-    mask = .~BitArray(zero(new_block[1]))
+    mask = .~BitArray(zero(new_block))
     if left_block != 0
         #Obtenemos la superficie de error
-        left_ov1 = [channel[:, 1:overlap_size] for channel in new_block]
-        left_ov2 = [channel[:, end-(overlap_size-1):end] for channel in left_block]
-        e = (
-        (left_ov2[1] - left_ov1[1]) .^ 2
-        +                        
-        (left_ov2[2] - left_ov1[2]) .^ 2
-        +                        
-        (left_ov2[3] - left_ov1[3]) .^ 2
-        )
+        left_ov1 = new_block[:, 1:overlap_size]
+        left_ov2 = left_block[:, end-(overlap_size-1):end]
+        e = (left_ov2 - left_ov1) .^ 2
 
         #Construimos E, error acumulado para todo trayecto
         E = zero(e)
@@ -273,15 +280,9 @@ function minimum_cut_mask(new_block, left_block, upper_block)
     end
     if upper_block != 0
         #Obtenemos la superficie de error
-        upper_ov1 = [channel[1:overlap_size, :] for channel in new_block]
-        upper_ov2 = [channel[end-(overlap_size-1):end, :] for channel in upper_block]
-        e = (
-        (upper_ov2[1] - upper_ov1[1]) .^ 2
-        +
-        (upper_ov2[2] - upper_ov1[2]) .^ 2
-        +
-        (upper_ov2[3] - upper_ov1[3]) .^ 2
-        )
+        upper_ov1 = new_block[1:overlap_size, :]
+        upper_ov2 = upper_block[end-(overlap_size-1):end, :]
+        e = (upper_ov2 - upper_ov1) .^ 2
 
         #Construimos E, error acumulado para todo trayecto
         E = zero(e)
@@ -319,72 +320,25 @@ function minimum_cut_mask(new_block, left_block, upper_block)
     return mask
 end
 
-"""
-search_block recorre todos los bloques que no interceptan Omega, y calcula el error respecto a los solapes
-del bloque a inpaintear llamando a  get_error.
-Guarda los errores con las posiciones de los bloques, selecciona todos los que cumplan el umbral y de estos
-elige uno aleatoriamente.
-"""
-function search_block(left_block, upper_block)
-    I_height, I_width = size(I[1])
 
-    # Cuantos bloques caben en ancho y largo, permitiendo que el último sobresalga
-    n_rows = div(I_height, block_size - overlap_size) + (%(I_height, block_size) == 0 ? 0 : 1)
-    n_cols = div(I_width, block_size - overlap_size) + (%(I_width, block_size) == 0 ? 0 : 1)
-
-    candidates = Dict{Float64,Tuple{Int32,Int32}}()
-    for (i_block, j_block) in Iterators.product(1:n_rows, 1:n_cols)
-        #coordenadas a partir de la posición del bloque
-        i = (i_block - 1) * (block_size - overlap_size) + 1
-        j = (j_block - 1) * (block_size - overlap_size) + 1
-
-        # Si sobresale
-        if i + block_size > I_height
-            i = I_height - block_size + 1
-        end
-        if j + block_size > I_width
-            j = I_width - block_size + 1
-        end
-
-        #Si no contiene pixeles de la máscara lo evaluamos con get_error y agregamos a candidatos
-        if !any(Omega[i:i+block_size-1, j:j+block_size-1])
-            candidates[get_error(i, j, left_block, upper_block)] = (i, j)
-        end
-    end
-
-    # Escogemos los candidatos con error dentro de un 0.1 veces el error del mejor candidato
-    # (recomendación del paper)
-    min_error = minimum(keys(candidates))
-    margin = 1.1 * min_error
-    best_candidates = [candidates[key] for key in filter(n -> n <= margin, keys(candidates))]
-    i, j = rand(best_candidates)
-    new_block = [channel[i:i+block_size-1, j:j+block_size-1] for channel in I]
-
-    return new_block
-
-end
 
 """
 get_error calcula el error asociado al bloque ubicado en la posición i,j respecto
 a los bloques superiores e izq.
 """
 function get_error(i, j, left_block, upper_block)
-    candidate_block = [channel[i:i+block_size-1, j:j+block_size-1] for channel in I]
+    candidate_block = I[i:i+block_size-1, j:j+block_size-1]
 
     error = 0
     if left_block != 0
-        for k in 1:3
-            left_ov1 = candidate_block[k][:, 1:overlap_size]
-            left_ov2 = left_block[k][:, end-(overlap_size-1):end]
-            error += distance(left_ov1, left_ov2)
-        end
+        left_ov1 = candidate_block[:, 1:overlap_size]
+        left_ov2 = left_block[:, end-(overlap_size-1):end]
+        error += distance(left_ov1, left_ov2)
     end
     if upper_block != 0
-        for k in 1:3
-            upper_ov1 = candidate_block[k][1:overlap_size, :]
-            upper_ov2 = upper_block[k][end-(overlap_size-1):end, :]
-            error += distance(upper_ov1, upper_ov2)
-        end
+        upper_ov1 = candidate_block[1:overlap_size, :]
+        upper_ov2 = upper_block[end-(overlap_size-1):end, :]
+        error += distance(upper_ov1, upper_ov2)
     end
 
     return error
