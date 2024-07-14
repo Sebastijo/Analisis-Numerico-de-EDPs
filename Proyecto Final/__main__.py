@@ -68,13 +68,16 @@ def inpaint(img_path: Path) -> np.array:
     # Crear la máscara de la imagen
     img, mask = mask_image(img_path)
 
-    K = 0.08
+    cv2.imwrite(str(img_dir_path / f"{img_path.stem}_danada.jpg"), img)
+
+    K = 0.06
     difussion = K
     dt_ani = 1 / 45
-
-    struct, text = ST_decomposition(img, K=K, dt=dt_ani, max_iters=500)
-
+    struct, text = ST_decomposition(img, K=K, dt=dt_ani, max_iters=3500)
     text = text + 0.5
+
+    cv2.imwrite(str(img_dir_path / f"{img_path.stem}_danada_estructura.jpg"), struct * 255.0)
+    cv2.imwrite(str(img_dir_path / f"{img_path.stem}_danada_textura.jpg"), text * 255.0)
 
     # Transformamos el mask en formato blanco y negro
     mask = cv2.cvtColor(mask, cv2.COLOR_BGR2GRAY) / 255.0
@@ -93,7 +96,7 @@ def inpaint(img_path: Path) -> np.array:
         channels_struct[color] = structure.structural_inpainting(
             channels_struct[color],
             mask,
-            max_iters=20000,
+            max_iters=30000,
             anisotropic_iters=1,
             dt=0.545,
             dilatacion=1,
@@ -104,6 +107,8 @@ def inpaint(img_path: Path) -> np.array:
     struct = cv2.merge(
         (channels_struct["B"], channels_struct["G"], channels_struct["R"])
     )
+
+    cv2.imwrite(str(img_dir_path / f"{img_path.stem}_restaurada_estructura.jpg"), struct * 255.0)
 
     # Separamos la imágen en sus canales RGB
     b_channel_text, g_channel_text, r_channel_text = cv2.split(text)
@@ -123,19 +128,21 @@ def inpaint(img_path: Path) -> np.array:
 
     text = cv2.merge((channels_text["B"], channels_text["G"], channels_text["R"]))
 
+    cv2.imwrite(str(img_dir_path / f"{img_path.stem}_restaurada_textura.jpg"), text * 255.0)
+
     cv2.imshow("Structure", struct)
     cv2.imshow("Texture", text)
     text = text - 0.5
-    cv2.imshow("Restaurada", struct + text)
+    restaurada = struct + text
+    cv2.imshow("Restaurada", restaurada)
+
+    cv2.imwrite(str(img_dir_path / f"{img_path.stem}_restaurada.jpg"), restaurada * 255.0)
 
     esc = False
     while not esc:
         if cv2.waitKey(1) == 27:
             cv2.destroyAllWindows()
             esc = True
-
-    # restored_path = restored_dir_path / f"{img_path.stem}_restored.jpg"
-    # cv2.imwrite(restored_path, img)
 
     return img
 

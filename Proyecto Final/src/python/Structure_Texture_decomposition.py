@@ -36,7 +36,7 @@ structure = Main.inpainting_structure
 
 
 def ST_decomposition(
-    img: np.ndarray, K: float = 0.08, dt: float = 1 / 45, max_iters: int = 300
+    img: np.ndarray, K: float = 0.04, dt: float = 1 / 45, max_iters: int = 2000
 ) -> tuple[np.ndarray, np.ndarray]:
     """
     Función que realiza la descomposición de una imagen en estructura y textura.
@@ -85,11 +85,15 @@ def ST_decomposition(
 if __name__ == "__main__":
 
     # Test image
-    img_path = img_dir_path / "barbara.jpg"
+    img_path = img_dir_path / "New_lena.jpg"
     img = cv2.imread(img_path)
 
     # Realizamos la descomposición de la imagen
     u, v = ST_decomposition(img)
+
+    cv2.imwrite(str(restored_dir_path / "New_lena_estructura.jpg"), u * 255.0)
+    cv2.imwrite(str(restored_dir_path / "New_lena_textura.jpg"), (v + 0.5) * 255.0)
+
     # Mostramos la imagen resultante
     cv2.imshow("Structure", u)
     cv2.imshow("Texture", v + 0.5)
